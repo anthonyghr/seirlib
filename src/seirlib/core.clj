@@ -1,38 +1,44 @@
 (ns seirlib.core)
 
+(defn- transition
+  "Move from a current epidemic state to the next"
+  [transition-fns seir-params current-state]
+  (let [state-keys (keys current-state)]
+    (loop [state current-state
+	   transition-fns transition-fns]
+      (if (empty? transition-fns)
+	state
+	(let [transition-fn (first transition-fns)	    
+	      new-deltas (transition-fn seir-params current-state)
+	      total-deltas (map #(+ (- (get state %) (get current-state %))
+				    (get new-deltas % 0.0))
+				state-keys)
+	      state-vals (map #(+ (get current-state %1) %2)				  
+			      state-keys total-deltas)]
+	  (recur (apply assoc (cons {} (interleave state-keys state-vals)))
+		 (rest transition-fns)))))))
+
 ;Default transition functions
 (defn- seir-deltas
   "Transition the compartments"
   [seir-params current-state]
   (let [{:keys [alpha beta gamma epsilon mu p]} seir-params
-	{:keys [s e i r]} current-state]
-    {:ds (+ (* (- beta) (/ s p) i)
-	    (* alpha r)
-	    (* mu (- p s)))
-     :de (+ (* beta (/ s p) i)
-	    (* (- epsilon) e)
-	    (* (- mu) e))
-     :di (+ (* epsilon e)
-	    (* (- gamma) i)
-	    (* (- mu) i))
-     :dr (+ (* gamma i)
-	    (* (- alpha) r)
-	    (* (- mu) r))}))
-
-(defn- transition
-  "Move from a current SEIR state to the next"
-  [transition-fns seir-params current-state]
-  (loop [s (:s current-state)
-	 e (:e current-state)
-	 i (:i current-state)
-	 r (:r current-state)
-	 transition-fns transition-fns]
-    (if (empty? transition-fns)
-      {:s s, :e e, :i i, :r r}
-      (let [transition-fn (first transition-fns)
-	    deltas (transition-fn seir-params current-state)
-	    {:keys [ds de di dr]} deltas]
-	(recur (+ s ds) (+ e de) (+ i di) (+ r dr) (rest transition-fns))))))
+	{:keys [s e i r in]} current-state]
+    {:s (+ (* (- beta) (/ s p) i)
+	   (* alpha r)
+	   (* mu (- p s)))
+     :e (+ (* beta (/ s p) i)
+	   (* (- epsilon) e)
+	   (* (- mu) e))
+     :i (+ (* epsilon e)
+	   (* (- gamma) i)
+	   (* (- mu) i))
+     :r (+ (* gamma i)
+	   (* (- alpha) r)
+	   (* (- mu) r))
+     :in (+ (* beta (/ s p) i)
+	    ;(* epsilon e)
+	    (- in))}))
 
 (defn- seir-seq
   "Return a lazy sequence of the states of a seir model as it progresses"
@@ -55,56 +61,35 @@
 			    :p (+ (:s (:initial-state seir-params))
 				  (:e (:initial-state seir-params))
 				  (:i (:initial-state seir-params))
-				  (:r (:initial-state seir-params)))})
+				  (:r (:initial-state seir-params)))
+			    :initial-state (merge (:initial-state seir-params)
+						  {:in 0.0})})
 	initial-state (:initial-state seir-params)
 	transition-fns (concat [ seir-deltas ] (get seir-params :extra-transition-fns []))]
     (seir-seq seir-params initial-state transition-fns)))
 
-(defmulti s-curve
-  "Method to get the susceptibles sequence"
-  class)
+(defmacro defcurve
+  "Macro to define the methods to extract a curve"
+  [name curve-key doc-string]
+  `(let [params# nil]
+     (defmulti ~name
+       ~doc-string
+       class)
+     
+     (defmethod ~name clojure.lang.PersistentArrayMap
+       [params#]
+       (~name (seir params#)))
 
-(defmethod s-curve clojure.lang.PersistentArrayMap
-  [seir-params]
-  (s-curve (seir seir-params)))
+     (defmethod ~name clojure.lang.LazySeq
+       [params#]
+       (map ~curve-key params#))))
 
-(defmethod s-curve clojure.lang.LazySeq
-  [seir-lazyseq]
-  (map :s seir-lazyseq))
+(defcurve s-curve :s "Method to get the susceptibles sequence")
 
-(defmulti e-curve
-  "Method to get the exposed sequence"
-  class)
+(defcurve e-curve :e "Method to get the exposed sequence")
 
-(defmethod e-curve clojure.lang.PersistentArrayMap
-  [seir-params]
-  (e-curve (seir seir-params)))
+(defcurve i-curve :i "Method to get the infectious sequence")
 
-(defmethod e-curve clojure.lang.LazySeq
-  [seir-lazyseq]
-  (map :e seir-lazyseq))
+(defcurve r-curve :r "Method to get the recovered sequence")
 
-(defmulti i-curve
-  "Method to get the infectious sequence"
-  class)
-
-(defmethod i-curve clojure.lang.PersistentArrayMap
-  [seir-params]
-  (i-curve (seir seir-params)))
-
-(defmethod i-curve clojure.lang.LazySeq
-  [seir-lazyseq]
-  (map :i seir-lazyseq))
-
-(defmulti r-curve
-  "Method to get the recovered sequence"
-  class)
-
-(defmethod r-curve clojure.lang.PersistentArrayMap
-  [seir-params]
-  (r-curve (seir seir-params)))
-
-(defmethod r-curve clojure.lang.LazySeq
-  [seir-lazyseq]
-  (map :r seir-lazyseq))
-
+(defcurve incidence-curve :in "Method to get the incidence sequence")
