@@ -6,7 +6,7 @@
 	     [runSeir [Long Long] java.util.HashMap]]
    :state state
    :init init)
-  (:use [seirlib.core :only (seir s-curve e-curve i-curve r-curve)])
+  (:use [seirlib.core :only (seir s-curve e-curve i-curve r-curve incidence-curve)])
   (:import [java.util HashMap]))
 
 (defn -init
@@ -26,11 +26,14 @@
   ([this ^Long length]
      (-runSeir this 0 length))
   ([this ^Long start ^Long length]
-     (let [seir-seq (drop start (take (+ start length) (seir (.state this))))]
+     (let [seir-seq (drop start (take (+ start length) (seir (.state this))))
+	   incd-curve (incidence-curve seir-seq)]
        (HashMap. {"sCurve" (into-array Number (s-curve seir-seq))
 		  "eCurve" (into-array Number (e-curve seir-seq))
 		  "iCurve" (into-array Number (i-curve seir-seq))
-		  "rCurve" (into-array Number (r-curve seir-seq))}))))
+		  "rCurve" (into-array Number (r-curve seir-seq))
+		  "incidenceCurve" (into-array Number incd-curve)
+		  "numberInfected" (reduce + incd-curve)}))))
        
   
   
