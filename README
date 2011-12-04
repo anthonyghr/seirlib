@@ -1,13 +1,20 @@
-# seirlib
+Description
+===========
 
-FIXME: write description
+This library is an incubator for testing epidemic models, specifically compartment models (see http://wiki.eclipse.org/Introduction_to_Compartment_Models)
+The library is implemented in Clojure, but provides an API for Java code to use.
 
-## Usage
+Usage
+=====
 
-FIXME: write
+The easiest way to use this library from Java is to generate a JAR file that can be included into your application.
+1) Download Leiningen (https://github.com/technomancy/leiningen), placing the lein script in the path for easier use.
+2) In the directory where you placed the downloaded seirlib code, type: lein uberjar
+3) That's it! Place the generated jar (seirlib-1.0.0-SNAPSHOT-standalone.jar) in your application path and your are good to go.
 
-## License
+The testseirlib subdirectory contains a simple Java class demonstrating how the library can be used.
 
-Copyright (C) 2011 FIXME
+
+Copyright (C) 2011 RODS Lab, Department of BioInformatics, University of Pittsburgh
 
 Distributed under the Eclipse Public License, the same as Clojure.
