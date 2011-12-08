@@ -36,8 +36,8 @@
      :r (+ (* gamma i)
 	   (* (- alpha) r)
 	   (* (- mu) r))
-     :in (+ (* beta (/ s p) i)
-	    ;(* epsilon e)
+     :in (+ ;(* beta (/ s p) i)
+	    (* epsilon e)
 	    (- in))}))
 
 (defn- seir-seq
